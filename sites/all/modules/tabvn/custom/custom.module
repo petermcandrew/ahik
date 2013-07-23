@@ -1,0 +1,303 @@
+<?php
+
+/**
+ * 
+ * Implememtation of hook_block_info()
+ */
+function custom_block_info() {
+
+
+  $blocks['recent_projects'] = array(
+      'info' => t('[Custom] Recent projects'),
+          // DRUPAL_CACHE_PER_ROLE will be assumed.
+  );
+
+  $blocks['portfolio_sidebar_detail'] = array(
+      'info' => t('[Custom] Portfolio sidebar detail'),
+          // DRUPAL_CACHE_PER_ROLE will be assumed.
+  );
+  $blocks['sidebar_recent_projects'] = array(
+      'info' => t('[Custom] sidebar recent projects'),
+          // DRUPAL_CACHE_PER_ROLE will be assumed.
+  );
+  $blocks['sidebar_recent_posts'] = array(
+      'info' => t('[Custom] sidebar recent posts'),
+          // DRUPAL_CACHE_PER_ROLE will be assumed.
+  );
+  $blocks['sidebar_categories'] = array(
+      'info' => t('[Custom] sidebar categories'),
+          // DRUPAL_CACHE_PER_ROLE will be assumed.
+  );
+
+
+
+  return $blocks;
+}
+
+/**
+ * 
+ * Implemetation of hook_block_configure()
+ */
+function custom_block_configure($delta = '') {
+  // This example comes from node.module.
+  $form = array();
+
+  switch ($delta) {
+    case 'recent_projects':
+
+      $form['recent_projects_block_count'] = array(
+          '#type' => 'select',
+          '#title' => t('Number of items to display'),
+          '#default_value' => variable_get('recent_projects_block_count', 8),
+          '#options' => drupal_map_assoc(array(4, 8, 12, 16, 20, 24, 28, 32, 36, 40)),
+      );
+
+      break;
+
+    case 'sidebar_recent_projects':
+      $form['sidebar_recent_projects_block_count'] = array(
+          '#type' => 'select',
+          '#title' => t('Number of items to display'),
+          '#default_value' => variable_get('sidebar_recent_projects_block_count', 4),
+          '#options' => drupal_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30)),
+      );
+
+      break;
+    case 'sidebar_recent_posts':
+      $form['sidebar_recent_posts_block_count'] = array(
+          '#type' => 'select',
+          '#title' => t('Number of items to display'),
+          '#default_value' => variable_get('sidebar_recent_posts_block_count', 4),
+          '#options' => drupal_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30)),
+      );
+
+      break;
+  }
+  return $form;
+}
+
+/**
+ * 
+ * Implementation of hook_block_save()
+ */
+function custom_block_save($delta = '', $edit = array()) {
+  // This example comes from node.module.
+
+  switch ($delta) {
+
+    case 'recent_projects':
+      variable_set('recent_projects_block_count', $edit['recent_projects_block_count']);
+      break;
+
+    case 'sidebar_recent_projects':
+      variable_set('sidebar_recent_projects_block_count', $edit['sidebar_recent_projects_block_count']);
+      break;
+
+    case 'sidebar_recent_posts':
+      variable_set('sidebar_recent_posts_block_count', $edit['sidebar_recent_posts_block_count']);
+      break;
+  }
+}
+
+/**
+ * 
+ * Implementation of hook_block_view()
+ */
+function custom_block_view($delta = '') {
+  // This example is adapted from node.module.
+  $block = array();
+
+  switch ($delta) {
+
+    case 'recent_projects':
+      $node_limit = variable_get('recent_projects_block_count', 8);
+      $content_type = 'portfolio';
+      $query = db_query('SELECT n.nid FROM {node} n INNER JOIN {field_data_field_image} f ON f.entity_id = n.nid WHERE n.type = :type AND n.status = 1 ORDER BY n.created DESC LIMIT 0, ' . $node_limit, array(':type' => $content_type));
+      $nids = $query->fetchCol();
+      $nodes = node_load_multiple($nids);
+
+      //  $block['subject'] = '';
+
+      if (!empty($nodes)) {
+        $block['content'] = array(
+            '#theme' => 'recent_projects',
+            '#nodes' => $nodes,
+            '#title' => custom_block_get_title($delta),
+        );
+      }
+
+      break;
+      
+     
+
+    case 'portfolio_sidebar_detail':
+      if (arg(0) == 'node' && arg(1)) {
+        $nid = arg(1);
+
+        $node = node_load($nid);
+        if ($node->type == 'portfolio') {
+          $block['subject'] = t('Project detail');
+          $block['content'] = array(
+              '#theme' => 'portfolio_sidebar_detail',
+              '#node' => $node,
+          );
+        }
+      }
+      break;
+
+
+
+    case 'sidebar_recent_projects':
+
+      $node_limit = variable_get('sidebar_recent_projects_block_count', 4);
+      $content_type = 'portfolio';
+      $nid = 0;
+      if (arg(0) == 'node' && arg(1)) {
+        $nid = arg(1);
+      }
+      $query = db_query('SELECT n.nid FROM {node} n INNER JOIN {field_data_field_image} f ON f.entity_id = n.nid WHERE n.type = :type AND n.status = 1 AND n.nid <> :nid ORDER BY n.created DESC LIMIT 0, ' . $node_limit, array(':type' => $content_type, ':nid' => $nid));
+      $nids = $query->fetchCol();
+      $nodes = node_load_multiple($nids);
+
+      $block['subject'] = t('Recent projects');
+      if (!empty($nodes)) {
+        $block['content'] = array(
+            '#theme' => 'sidebar_recent_projects',
+            '#nodes' => $nodes,
+        );
+      }
+
+      break;
+      
+      
+    case 'sidebar_recent_posts':
+
+      $node_limit = variable_get('sidebar_recent_posts_block_count', 4);
+      $content_type = 'blog';
+      $nid = 0;
+      if (arg(0) == 'node' && arg(1)) {
+        $nid = arg(1);
+      }
+      $query = db_query('SELECT n.nid FROM {node} n INNER JOIN {field_data_field_image} f ON f.entity_id = n.nid WHERE n.type = :type AND n.status = 1 AND n.nid <> :nid ORDER BY n.created DESC LIMIT 0, ' . $node_limit, array(':type' => $content_type, ':nid' => $nid));
+      $nids = $query->fetchCol();
+      $nodes = node_load_multiple($nids);
+
+      $block['subject'] = t('Recent posts');
+      if (!empty($nodes)) {
+        $block['content'] = array(
+            '#theme' => 'sidebar_recent_posts',
+            '#nodes' => $nodes,
+        );
+      }
+
+      break;
+
+    case 'sidebar_categories':
+      $v_machine_name = 'blog_categories';
+      $vocab = taxonomy_vocabulary_machine_name_load($v_machine_name);
+      $vid = $vocab->vid;
+      $terms = taxonomy_get_tree($vid);
+      if (!empty($terms)) {
+        $block['subject'] = t('Categories');
+        $block['content'] = array(
+            '#theme' => 'sidebar_categories',
+            '#terms' => $terms,
+        );
+      }
+
+      break;
+  }
+  return $block;
+}
+
+/**
+ * Implmentation of hook_theme()
+ * 
+ */
+function custom_theme($existing, $type, $theme, $path) {
+  return array(
+      'recent_projects' => array(
+          'variables' => array('nodes' => NULL, 'title' => NULL),
+          'template' => 'recent_projects',
+      ),
+      'sidebar_recent_projects' => array(
+          'variables' => array('nodes' => NULL),
+          'template' => 'sidebar_recent_projects',
+      ),
+      'sidebar_recent_posts' => array(
+          'variables' => array('nodes' => NULL),
+          'template' => 'sidebar_recent_posts',
+      ),
+      'portfolio_sidebar_detail' => array(
+          'variables' => array('node' => NULL),
+          'template' => 'portfolio_sidebar_detail',
+      ),
+      'sidebar_categories' => array(
+          'variables' => array('terms' => NULL),
+          'template' => 'sidebar_categories',
+      ),
+  );
+}
+
+function custom_block_get_title($delta) {
+  $block = db_query('SELECT title FROM {block} WHERE delta = :delta', array(':delta' => $delta))->fetchObject();
+
+  return $block->title ? $block->title : '';
+}
+
+function custom_format_comma_field($field_category, $node, $link = TRUE, $limit = NULL) {
+  $category_arr = array();
+  $category = '';
+  if (!empty($node->{$field_category}[LANGUAGE_NONE])) {
+    foreach ($node->{$field_category}[LANGUAGE_NONE] as $item) {
+      $term = taxonomy_term_load($item['tid']);
+      if ($term) {
+        if ($link) {
+          $category_arr[] = l($term->name, 'taxonomy/term/' . $item['tid']);
+        } else {
+          $category_arr[] = $term->name;
+        }
+      }
+
+      if ($limit) {
+        if (count($category_arr) == $limit) {
+          $category = implode(', ', $category_arr);
+          return $category;
+        }
+      }
+    }
+  }
+  $category = implode(', ', $category_arr);
+
+  return $category;
+}
+
+function custom_trim_text($alter, $value) {
+  if (drupal_strlen($value) > $alter['max_length']) {
+    $value = drupal_substr($value, 0, $alter['max_length']);
+    // TODO: replace this with cleanstring of ctools
+    if (!empty($alter['word_boundary'])) {
+      $regex = "(.*)\b.+";
+      if (function_exists('mb_ereg')) {
+        mb_regex_encoding('UTF-8');
+        $found = mb_ereg($regex, $value, $matches);
+      } else {
+        $found = preg_match("/$regex/us", $value, $matches);
+      }
+      if ($found) {
+        $value = $matches[1];
+      }
+    }
+    // Remove scraps of HTML entities from the end of a strings
+    $value = rtrim(preg_replace('/(?:<(?!.+>)|&(?!.+;)).*$/us', '', $value));
+
+    if (!empty($alter['ellipsis'])) {
+      $value .= t('...');
+    }
+  }
+  if (!empty($alter['html'])) {
+    $value = _filter_htmlcorrector($value);
+  }
+
+  return $value;
+}
